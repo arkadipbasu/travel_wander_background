@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wanderlust — Travel your world</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:       #f0ece3;
+    --ink-dim:   rgba(240,236,227,.55);
+    --ink-muted: rgba(240,236,227,.28);
+    --glass:     rgba(10,8,6,.45);
+    --gold:      #c9a84c;
+    --gold-dim:  rgba(201,168,76,.35);
+    --danger:    #e05c4b;
+    --radius:    4px;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+  }
+
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: var(--font-body); color: var(--ink); background: #0a0806; }
+
+  /* ── background video ── */
+  #video-wrap { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
+  #bg-video {
+    width: 100%; height: 100%; object-fit: cover;
+    filter: brightness(.72) saturate(1.15);
+    transition: opacity .8s ease;
+  }
+  #bg-video.fade-out { opacity: 0; }
+  #video-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, rgba(10,8,6,.18) 0%, rgba(10,8,6,.05) 40%, rgba(10,8,6,.55) 100%);
+  }
+
+  /* ── layout ── */
+  #app {
+    position: relative; z-index: 1;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 2rem;
+  }
+
+  /* ── wordmark (top-left, always visible) ── */
+  #wordmark {
+    position: fixed; top: 2rem; left: 2.5rem; z-index: 10;
+    font-family: var(--font-display);
+    font-size: 1.05rem; font-weight: 300;
+    letter-spacing: .22em; text-transform: uppercase;
+    color: var(--ink-dim); user-select: none;
+    transition: opacity .5s ease;
+  }
+
+  /* ── watermark (top-right) ── */
+  #watermark {
+    position: fixed; top: 1.6rem; right: 2rem; z-index: 10;
+    font-family: var(--font-body);
+    font-size: .68rem; font-weight: 300;
+    letter-spacing: .08em;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color .2s, opacity .5s ease;
+    user-select: none;
+  }
+  #watermark:hover { color: var(--gold); }
+
+  /* ── hero headline ── */
+  .hero-text {
+    text-align: center; margin-bottom: 3.5rem;
+    pointer-events: none;
+  }
+  .hero-text h1 {
+    font-family: var(--font-display);
+    font-size: clamp(3.2rem, 8vw, 7rem);
+    font-weight: 300; line-height: 1.0; letter-spacing: -.01em;
+  }
+  .hero-text h1 em { font-style: italic; color: var(--gold); }
+  .hero-text p {
+    margin-top: .9rem; font-size: .78rem;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--ink-dim);
+  }
+
+  /* ── card ── */
+  #ui-panel {
+    width: 100%; max-width: 520px;
+    transition: opacity .55s ease, transform .55s ease;
+  }
+  #ui-panel.hidden {
+    opacity: 0;
+    transform: translateY(14px);
+    pointer-events: none;
+  }
+
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(240,236,227,.12);
+    border-radius: var(--radius);
+    padding: 2rem 2.2rem;
+  }
+
+  /* ── search row ── */
+  .search-row { display: flex; gap: .6rem; }
+  .search-row input {
+    flex: 1;
+    background: rgba(240,236,227,.07);
+    border: 1px solid rgba(240,236,227,.18);
+    border-radius: var(--radius); color: var(--ink);
+    font-family: var(--font-body); font-size: .92rem;
+    padding: .72rem 1rem; outline: none;
+    transition: border-color .2s, background .2s;
+  }
+  .search-row input::placeholder { color: var(--ink-muted); }
+  .search-row input:focus { border-color: var(--gold); background: rgba(201,168,76,.06); }
+
+  .btn {
+    background: var(--gold); border: none; border-radius: var(--radius);
+    color: #0a0806; cursor: pointer; font-family: var(--font-body);
+    font-size: .78rem; font-weight: 500; letter-spacing: .1em;
+    padding: .72rem 1.3rem; text-transform: uppercase;
+    transition: opacity .18s, transform .12s; white-space: nowrap;
+  }
+  .btn:hover { opacity: .88; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* ── divider ── */
+  .divider {
+    display: flex; align-items: center; gap: .9rem;
+    margin: 1.4rem 0; color: var(--ink-muted);
+    font-size: .7rem; letter-spacing: .15em; text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: rgba(240,236,227,.12);
+  }
+
+  /* ── custom row ── */
+  .custom-row { display: flex; gap: .6rem; }
+  .custom-row input {
+    flex: 1; background: rgba(240,236,227,.05);
+    border: 1px solid rgba(240,236,227,.12); border-radius: var(--radius);
+    color: var(--ink); font-family: var(--font-body); font-size: .82rem;
+    padding: .62rem .9rem; outline: none; transition: border-color .2s;
+  }
+  .custom-row input::placeholder { color: var(--ink-muted); }
+  .custom-row input:focus { border-color: rgba(201,168,76,.55); }
+
+  .btn-ghost {
+    background: transparent; border: 1px solid rgba(240,236,227,.22);
+    border-radius: var(--radius); color: var(--ink-dim); cursor: pointer;
+    font-family: var(--font-body); font-size: .75rem; letter-spacing: .08em;
+    padding: .62rem 1rem; text-transform: uppercase;
+    transition: border-color .2s, color .2s, background .2s; white-space: nowrap;
+  }
+  .btn-ghost:hover { border-color: var(--gold-dim); color: var(--gold); background: rgba(201,168,76,.06); }
+
+  /* ── status bar ── */
+  .status-bar {
+    margin-top: 1.1rem; min-height: 1.4rem; font-size: .76rem;
+    letter-spacing: .05em; display: flex; align-items: center; gap: .55rem;
+    transition: opacity .3s;
+  }
+  .status-bar.hidden { opacity: 0; pointer-events: none; }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot.pulse { background: var(--gold); animation: blink 1.2s ease-in-out infinite; }
+  .dot.ok  { background: #6ecb8a; }
+  .dot.err { background: var(--danger); }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%     { opacity: .4; transform: scale(.7); }
+  }
+
+  /* ── spinner ── */
+  .spin {
+    width: 14px; height: 14px; flex-shrink: 0;
+    border: 2px solid rgba(201,168,76,.25); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── tags ── */
+  .suggestions { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.2rem; }
+  .tag {
+    background: rgba(240,236,227,.07); border: 1px solid rgba(240,236,227,.13);
+    border-radius: 99px; color: var(--ink-dim); cursor: pointer;
+    font-size: .7rem; letter-spacing: .08em; padding: .3rem .8rem;
+    text-transform: uppercase;
+    transition: background .18s, border-color .18s, color .18s; user-select: none;
+  }
+  .tag:hover { background: rgba(201,168,76,.1); border-color: var(--gold-dim); color: var(--gold); }
+
+  /* ── now-playing pill ── */
+  #now-playing {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--glass); backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(240,236,227,.1); border-radius: 99px;
+    font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-dim); padding: .45rem 1.2rem; white-space: nowrap;
+    max-width: calc(100vw - 4rem); overflow: hidden; text-overflow: ellipsis;
+    opacity: 0; pointer-events: none;
+    transition: opacity .5s ease;
+    z-index: 10;
+  }
+  #now-playing.visible { opacity: 1; pointer-events: auto; }
+  #now-playing.faded   { opacity: 0; }
+</style>
+</head>
+<body>
+
+<!-- background video -->
+<div id="video-wrap">
+  <video id="bg-video" autoplay muted loop playsinline>
+    <source id="bg-src" src="" type="video/mp4">
+  </video>
+  <div id="video-overlay"></div>
+</div>
+
+<!-- wordmark top-left -->
+<div id="wordmark">Wanderlust</div>
+
+<!-- watermark top-right -->
+<a id="watermark" href="https://arkadipbasu.github.io/" target="_blank" rel="noopener" style="font-size: 20px">
+  &copy; arkadipbasu.github.io
+</a>
+
+<!-- main UI -->
+<div id="app">
+  <div class="hero-text">
+    <h1>Where will you<br><em>wander</em> next?</h1>
+    <p>Type a destination — watch the world open up</p>
+  </div>
+
+  <!-- only this panel hides/shows -->
+
+    <div id="ui-panel">
+      <div class="card">
+        <div class="search-row">
+          <input type="text" id="place-input" placeholder="Bengaluru, Kyoto, Singapore …" autocomplete="off" spellcheck="false">
+          <button class="btn" id="search-btn">Explore</button>
+        </div>
+    
+        <div class="suggestions" id="tag-list">
+          <span class="tag">Kolkata</span>
+          <span class="tag">Varanasi</span>
+          <span class="tag">Kashmir</span>
+          <span class="tag">Hampi</span>
+          <span class="tag">Chikmaglur</span>
+          <span class="tag">Bali</span>
+          <span class="tag">Masaimara</span>
+        </div>
+      
+      <div class="divider">or use your own video</div>
+
+      <div class="custom-row">
+        <input type="text" id="custom-input" placeholder="~/Downloads/clip.mp4  or  https://…/video.mp4">
+        <button class="btn-ghost" id="custom-btn">Use this</button>
+      </div>
+
+      <div class="status-bar hidden" id="status-bar">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-msg"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- now-playing pill -->
+<div id="now-playing"></div>
+
+<script>
+// ── refs ─────────────────────────────────────────────────────────────────────
+const bgVideo   = document.getElementById('bg-video');
+const bgSrc     = document.getElementById('bg-src');
+const placeIn   = document.getElementById('place-input');
+const searchBtn = document.getElementById('search-btn');
+const customIn  = document.getElementById('custom-input');
+const customBtn = document.getElementById('custom-btn');
+const statusBar = document.getElementById('status-bar');
+const statusDot = document.getElementById('status-dot');
+const statusMsg = document.getElementById('status-msg');
+const nowPlay   = document.getElementById('now-playing');
+const uiPanel   = document.getElementById('ui-panel');
+
+let pollTimer   = null;
+let currentPlace = '';
+
+// ── auto-hide logic ───────────────────────────────────────────────────────────
+let videoLoaded  = false;
+let hideTimer    = null;
+let isTyping     = false;   // true while an input is focused
+
+function scheduleHide() {
+  clearTimeout(hideTimer);
+  if (!videoLoaded || isTyping) return;
+  hideTimer = setTimeout(hideUI, 3000);
+}
+
+function hideUI() {
+  uiPanel.classList.add('hidden');
+  nowPlay.classList.add('faded');
+}
+
+function revealUI() {
+  uiPanel.classList.remove('hidden');
+  nowPlay.classList.remove('faded');
+  scheduleHide();
+}
+
+// cursor movement anywhere on page shows UI
+document.addEventListener('mousemove', revealUI);
+document.addEventListener('touchstart', revealUI, { passive: true });
+
+// while typing in any input, keep UI visible
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('focus', () => { isTyping = true; clearTimeout(hideTimer); uiPanel.classList.remove('hidden'); });
+  el.addEventListener('blur',  () => { isTyping = false; scheduleHide(); });
+});
+
+// ── video swap ────────────────────────────────────────────────────────────────
+function swapVideo(url, label) {
+  bgVideo.classList.add('fade-out');
+  setTimeout(() => {
+    bgSrc.src = url;
+    bgVideo.load();
+    bgVideo.play().catch(() => {});
+    bgVideo.classList.remove('fade-out');
+    showNowPlaying(label);
+    videoLoaded = true;
+    scheduleHide();          // start 3s countdown after video loads
+  }, 700);
+}
+
+function showNowPlaying(label) {
+  nowPlay.textContent = '\u25B6  ' + label;
+  nowPlay.classList.add('visible');
+  nowPlay.classList.remove('faded');
+}
+
+// ── status UI ─────────────────────────────────────────────────────────────────
+function setStatus(type, msg) {
+  statusBar.classList.remove('hidden');
+  // clear old spin
+  const oldSpin = document.getElementById('status-spin');
+  if (oldSpin) oldSpin.remove();
+  statusDot.style.display = '';
+  statusDot.className = 'dot';
+
+  if (type === 'loading') {
+    statusDot.style.display = 'none';
+    const spin = document.createElement('span');
+    spin.id = 'status-spin'; spin.className = 'spin';
+    statusBar.insertBefore(spin, statusMsg);
+  } else {
+    if (type === 'ok')    statusDot.classList.add('ok');
+    if (type === 'err')   statusDot.classList.add('err');
+    if (type === 'pulse') statusDot.classList.add('pulse');
+  }
+  statusMsg.textContent = msg;
+}
+
+function clearStatus() { statusBar.classList.add('hidden'); }
+
+// ── search ────────────────────────────────────────────────────────────────────
+async function searchPlace(place) {
+  if (!place) return;
+  currentPlace = place;
+  clearPoll();
+  searchBtn.disabled = true;
+  setStatus('loading', `Searching "${place}" on YouTube\u2026`);
+
+  try {
+    const res  = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ place })
+    });
+    const data = await res.json();
+
+    if (data.error) { setStatus('err', data.error); searchBtn.disabled = false; return; }
+
+    if (data.status === 'ready') {
+      setStatus('ok', `Playing: ${place}`);
+      swapVideo(data.video_url, place);
+      searchBtn.disabled = false;
+    } else if (data.status === 'downloading') {
+      setStatus('pulse', `Downloading video for \u201C${place}\u201D\u2026`);
+      pollTimer = setInterval(() => pollStatus(place), 2500);
+    }
+  } catch(e) {
+    setStatus('err', 'Server error. Is app.py running?');
+    searchBtn.disabled = false;
+  }
+}
+
+async function pollStatus(place) {
+  try {
+    const res  = await fetch(`/api/status/${encodeURIComponent(place)}`);
+    const data = await res.json();
+    if (data.status === 'ready' || data.status === 'done') {
+      clearPoll();
+      setStatus('ok', `Playing: ${place}`);
+      swapVideo(data.video_url, place);
+      searchBtn.disabled = false;
+    } else if (data.status === 'error') {
+      clearPoll();
+      setStatus('err', data.error || 'Download failed');
+      searchBtn.disabled = false;
+    }
+  } catch(e) { /* retry next tick */ }
+}
+
+function clearPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+// ── custom video ──────────────────────────────────────────────────────────────
+async function useCustom() {
+  const path = customIn.value.trim();
+  if (!path) return;
+  clearPoll();
+  customBtn.disabled = true;
+  setStatus('loading', 'Resolving path\u2026');
+  try {
+    const res  = await fetch('/video/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    const data = await res.json();
+    if (data.error) { setStatus('err', data.error); return; }
+    setStatus('ok', `Custom: ${path.split('/').pop()}`);
+    swapVideo(data.url, path.split('/').pop());
+  } catch(e) {
+    setStatus('err', 'Failed to load custom video');
+  } finally { customBtn.disabled = false; }
+}
+
+// ── default video on load ─────────────────────────────────────────────────────
+async function loadDefault() {
+  try {
+    const res  = await fetch('/api/default_video');
+    const data = await res.json();
+    if (data.available) {
+      bgSrc.src = data.url;
+      bgVideo.load();
+      bgVideo.play().catch(() => {});
+      showNowPlaying('europe_random.mp4');
+      videoLoaded = true;
+      scheduleHide();
+    }
+  } catch(e) { /* no default */ }
+}
+
+// ── event wiring ──────────────────────────────────────────────────────────────
+searchBtn.addEventListener('click', () => searchPlace(placeIn.value.trim()));
+placeIn.addEventListener('keydown',  e => { if (e.key === 'Enter') searchPlace(placeIn.value.trim()); });
+customBtn.addEventListener('click', useCustom);
+customIn.addEventListener('keydown', e => { if (e.key === 'Enter') useCustom(); });
+
+document.getElementById('tag-list').addEventListener('click', e => {
+  if (e.target.classList.contains('tag')) {
+    const place = e.target.textContent.trim();
+    placeIn.value = place;
+    searchPlace(place);
+  }
+});
+
+loadDefault();
+</script>
+</body>
+</html>
